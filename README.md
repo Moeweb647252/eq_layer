@@ -1,6 +1,7 @@
 # EQ Layer
 
-A real-time audio equalizer application built in Rust that applies parametric EQ filters to audio streams. It supports both a graphical user interface (GUI) and command-line interface (CLI).
+A real-time audio equalizer application built in Rust that applies parametric EQ filters to audio streams.
+Can be used as system-wide equalizer when collaborating with [BlackHole](https://github.com/ExistentialAudio/BlackHole)
 
 ## Features
 
