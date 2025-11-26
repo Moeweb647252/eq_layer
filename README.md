@@ -57,7 +57,10 @@ The GUI allows you to:
 
 ### Configuration
 
-The application stores its configuration in `~/.config/eq_layer/config.toml` (on Linux/macOS) or the appropriate config directory on Windows.
+The application stores its configuration in:
+- Linux: `~/.config/eq_layer/config.toml`
+- macOS: `~/Library/Application Support/eq_layer/config.toml`
+- Windows: `%APPDATA%\eq_layer\config.toml`
 
 Configuration includes:
 - Input and output device names
