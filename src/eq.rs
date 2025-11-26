@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-/// 定义滤波器类型 (Equalizer APO 标准缩写)
+/// Equalizer APO FilterType
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FilterType {
     Peak,      // PK
@@ -48,15 +48,14 @@ impl FromStr for FilterType {
     }
 }
 
-/// 单个滤波器配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Filter {
     pub enabled: bool,
     pub filter_type: FilterType,
-    pub frequency: f64,         // Hz
-    pub gain: f64,              // dB
-    pub q_factor: f64,          // Q 值
-    pub bandwidth: Option<f64>, // Bandwidth (Q 的替代表示)
+    pub frequency: f64, // Hz
+    pub gain: f64,      // dB
+    pub q_factor: f64,
+    pub bandwidth: Option<f64>,
 }
 
 impl Default for Filter {
@@ -72,14 +71,12 @@ impl Default for Filter {
     }
 }
 
-/// 完整的 EQ 配置文件结构
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EqProfile {
     pub preamp_db: f64,
     pub filters: Vec<Filter>,
 }
 
-/// 解析错误类型
 #[derive(Debug)]
 pub enum EqParseError {
     ParseFloatError,
@@ -100,18 +97,13 @@ impl FromStr for EqProfile {
         for line in s.lines() {
             let line = line.trim();
 
-            // 忽略空行和注释
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
 
-            // 解析 Preamp
             if line.to_uppercase().starts_with("PREAMP:") {
-                // 格式示例: "Preamp: -6.0 dB"
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    // 尝试解析紧跟在 Preamp: 后的数字
-                    // 有些文件写 "Preamp:" 有些写 "Preamp"
                     let val_str = if parts[0].ends_with(':') {
                         parts[1]
                     } else {
@@ -122,7 +114,6 @@ impl FromStr for EqProfile {
                 continue;
             }
 
-            // 解析 Filter
             if line.to_uppercase().starts_with("FILTER") {
                 let filter = parse_filter_line(line)?;
                 profile.filters.push(filter);
@@ -134,14 +125,11 @@ impl FromStr for EqProfile {
     }
 }
 
-/// 辅助函数：解析单行 Filter 字符串
 fn parse_filter_line(line: &str) -> Result<Filter, EqParseError> {
-    // 示例: Filter 1: ON PK Fc 100 Hz Gain 3.0 dB Q 1.41
     let tokens: Vec<&str> = line.split_whitespace().collect();
 
     let mut filter = Filter::default();
 
-    // 简单的状态机遍历 token
     let mut i = 0;
     while i < tokens.len() {
         let token = tokens[i];
@@ -173,11 +161,8 @@ fn parse_filter_line(line: &str) -> Result<Filter, EqParseError> {
                 }
             }
             _ => {
-                // 尝试解析 Filter 类型 (PK, LS, HS 等)
-                // 通常类型出现在 "ON/OFF" 之后，或者 "Filter N:" 之后
                 if let Ok(ft) = FilterType::from_str(token) {
                     if let FilterType::Unknown(_) = ft {
-                        // 忽略未知 token (如 "Hz", "dB", "Filter", "1:")
                     } else {
                         filter.filter_type = ft;
                     }
@@ -246,7 +231,7 @@ impl Equalizer {
                     )
                     .unwrap()
                 }
-                _ => continue, // 其他类型暂不支持
+                _ => continue,
             };
             filters.push(DirectForm2Transposed::<f32>::new(biquad));
         }
