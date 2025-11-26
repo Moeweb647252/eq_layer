@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use cpal::traits::{DeviceTrait, HostTrait};
 use eframe::egui;
+use font_kit::{family_name::FamilyName, properties::Properties, source::SystemSource};
 use settings::Settings;
 use ui::App;
 
@@ -64,5 +67,61 @@ fn main() {
     };
     let app = App::new(settings, sender, state, info);
 
-    eframe::run_native("Eq Layer", options, Box::new(|_| Ok(Box::new(app)))).unwrap();
+    eframe::run_native(
+        "Eq Layer",
+        options,
+        Box::new(|ctx| {
+            load_font(&ctx.egui_ctx);
+            Ok(Box::new(app))
+        }),
+    )
+    .unwrap();
+}
+
+fn load_font(ctx: &egui::Context) {
+    let source = SystemSource::new();
+
+    let font_families = [
+        FamilyName::Title("Microsoft YaHei".to_string()), // Windows SC
+        FamilyName::Title("PingFang SC".to_string()),     // macOS SC
+        FamilyName::Title("Noto Sans CJK SC".to_string()), // Linux SC
+        FamilyName::Title("Arial".to_string()),           // Common English
+        FamilyName::SansSerif,                            // Fallback
+    ];
+
+    // 3. 尝试查找字体
+    let mut font_data_bytes: Option<Vec<u8>> = None;
+
+    for family in &font_families {
+        let properties = Properties::new();
+
+        if let Ok(handle) = source.select_best_match(&[family.clone()], &properties) {
+            if let Ok(font) = handle.load() {
+                if let Some(data) = font.copy_font_data() {
+                    font_data_bytes = Some(data.to_vec());
+                    println!("Found font: {:?}", family);
+                    break;
+                }
+            }
+        }
+    }
+
+    if let Some(font_data) = font_data_bytes {
+        let mut fonts = egui::FontDefinitions::default();
+
+        fonts.font_data.insert(
+            "system_font".to_owned(),
+            Arc::new(egui::FontData::from_owned(font_data)),
+        );
+
+        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+            family.insert(0, "system_font".to_owned());
+        }
+
+        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+            family.push("system_font".to_owned());
+        }
+
+        ctx.set_fonts(fonts);
+    }
 }
