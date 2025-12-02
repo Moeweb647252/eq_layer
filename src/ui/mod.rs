@@ -1,6 +1,8 @@
 use crate::{
+    eq::EqProfile,
     settings::Settings,
     ui::command::{Command, Info, State},
+    utils::DerefMutHook,
 };
 use eframe::egui::CentralPanel;
 use std::sync::mpsc::SyncSender;
@@ -12,6 +14,9 @@ mod heading;
 
 pub struct App {
     eq_settings: Settings,
+    eq_profile: DerefMutHook<EqProfile>,
+    eq_settings_back: Settings,
+    eq_profile_back: EqProfile,
     sender: SyncSender<Command>,
     state: State,
     info: Info,
@@ -20,12 +25,16 @@ pub struct App {
 impl App {
     pub fn new(
         eq_settings: Settings,
+        eq_profile: EqProfile,
         sender: SyncSender<Command>,
         state: State,
         info: Info,
     ) -> Self {
         Self {
+            eq_settings_back: eq_settings.clone(),
+            eq_profile_back: eq_profile.clone(),
             eq_settings,
+            eq_profile: DerefMutHook::new(eq_profile),
             sender,
             state,
             info,

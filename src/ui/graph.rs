@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use eframe::egui::{Color32, Response, Ui};
-use egui_plot::{GridMark, Line, Plot, PlotPoints};
+use egui_plot::{GridInput, GridMark, Line, Plot, PlotPoints};
 
 use crate::{
     eq::{Filter, FilterType},
@@ -93,34 +93,57 @@ impl BiquadCoeffs {
     }
 }
 
-fn log_grid_spacer(input: egui_plot::GridInput) -> Vec<egui_plot::GridMark> {
+fn audio_grid_spacer(input: GridInput) -> Vec<GridMark> {
     let mut marks = Vec::new();
 
+    // input.bounds 包含了当前视图的最小值和最大值 (真实频率值，非 log 值)
     let (min, max) = input.bounds;
-    let min = min.max(10.0); // 音频通常不看 DC
 
+    // 计算 10 的幂次范围
     let min_log = min.log10().floor() as i32;
     let max_log = max.log10().ceil() as i32;
 
     for power in min_log..=max_log {
         let base = 10.0_f64.powi(power);
 
-        // 主要刻度: 10, 100, 1k, 10k
+        // 我们通常希望显示 1, 2, 5 序列 (例如 100, 200, 500)
+        // 或者如果缩放得够大，显示 1, 2, 3, 4...
+
+        // 1. 主刻度 (10^n): 10, 100, 1k, 10k
         if base >= min && base <= max {
             marks.push(GridMark {
                 value: base,
-                step_size: base, // 仅用于内部计算逻辑
+                step_size: base, // 这一项帮助 egui 决定是否显示 label
             });
         }
 
-        // 次要刻度: 20, 30... 200, 300...
-        // 如果缩放足够大，显示次要刻度
-        if input.bounds.1 - input.bounds.0 < base * 10.0 {
-            for k in 2..10 {
-                let val = base * k as f64;
-                if val >= min && val <= max {
-                    // 次要刻度没有标签，或者用更淡的颜色，这里简单处理
-                    // egui_plot 目前对 GridMark 的自定义有限，这里只是生成位置
+        // 2. 次级刻度: 2, 3, 4 ... 9 * base
+        for k in 2..10 {
+            let val = base * k as f64;
+            if val > max {
+                break;
+            }
+            if val < min {
+                continue;
+            }
+
+            // 简单的细节剔除逻辑：
+            // 只有当两个主刻度（比如 100 和 1000）在屏幕上的距离足够宽时，才显示中间的刻度
+            // 这里我们用一个近似的启发式方法：
+            // 如果视图范围涵盖了太多的数量级，就不显示次级刻度
+
+            let range_magnitude = (max / min).log10();
+
+            // 如果显示的范围跨度小于 4 个数量级 (比如 20Hz - 20kHz 是 3 个数量级)，显示详细网格
+            if range_magnitude < 4.0 {
+                // 音频常用: 2, 5 总是比较重要
+                if k == 2 || k == 5 {
+                    marks.push(GridMark {
+                        value: val,
+                        step_size: base,
+                    });
+                } else if range_magnitude < 2.5 {
+                    // 只有放大得比较大时，才显示 3, 4, 6, 7, 8, 9
                     marks.push(GridMark {
                         value: val,
                         step_size: base,
@@ -129,6 +152,7 @@ fn log_grid_spacer(input: egui_plot::GridInput) -> Vec<egui_plot::GridMark> {
             }
         }
     }
+
     marks
 }
 
@@ -136,10 +160,10 @@ impl App {
     pub fn graph_ui(&self, ui: &mut Ui) -> Response {
         let fs = 44000.0;
         let coeffs: Vec<_> = self
-            .eq_settings
             .eq_profile
             .filters
             .iter()
+            .filter(|f| f.enabled)
             .map(|f| BiquadCoeffs::calc(f, fs))
             .collect();
         let width = ui.available_width();
@@ -169,7 +193,9 @@ impl App {
             .allow_drag(false)
             .allow_scroll(false)
             .allow_zoom(false)
-            .x_grid_spacer(log_grid_spacer)
+            .allow_axis_zoom_drag(false)
+            .allow_boxed_zoom(false)
+            .x_grid_spacer(audio_grid_spacer)
             .default_x_bounds(20.0, 20000.0)
             .show(ui, |ui| {
                 ui.line(

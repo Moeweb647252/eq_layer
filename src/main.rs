@@ -9,7 +9,8 @@ use ui::App;
 use crate::{
     config::{Config, config_dir},
     executor::executor,
-    ui::command::{Info, oneshot::OneShot},
+    ui::command::Info,
+    utils::OneShot,
 };
 mod config;
 mod eq;
@@ -17,6 +18,7 @@ mod executor;
 mod run;
 mod settings;
 mod ui;
+mod utils;
 
 fn main() {
     env_logger::init();
@@ -40,7 +42,6 @@ fn main() {
     };
     let settings = Settings {
         enable_eq: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
-        eq_profile: config.eq_profile.clone(),
         instance_id: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         latency: 100,
     };
@@ -65,7 +66,7 @@ fn main() {
         input_dev: config.input_dev_name.clone().unwrap_or(String::new()),
         output_dev: config.output_dev_name.clone().unwrap_or(String::new()),
     };
-    let app = App::new(settings, sender, state, info);
+    let app = App::new(settings, config.eq_profile, sender, state, info);
 
     eframe::run_native(
         "Eq Layer",

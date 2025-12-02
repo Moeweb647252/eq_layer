@@ -11,7 +11,7 @@ use crate::{
 fn band_ui(index: usize, band: &mut Filter, ui: &mut Ui, remove: &mut bool) {
     ui.vertical(|ui| {
         ui.label("Type");
-        ComboBox::new("FilterType", "")
+        ComboBox::new(format!("FilterType_{}", index), "")
             .selected_text(band.filter_type.to_string())
             .show_ui(ui, |ui| {
                 ui.selectable_value(
@@ -56,7 +56,7 @@ fn band_ui(index: usize, band: &mut Filter, ui: &mut Ui, remove: &mut bool) {
 
 impl App {
     pub fn equalizer_ui(&mut self, ui: &mut Ui) {
-        let profile = &mut self.eq_settings.eq_profile;
+        let profile = &mut self.eq_profile;
         ScrollArea::horizontal()
             .scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
             .show(ui, |ui| {

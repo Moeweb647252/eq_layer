@@ -1,7 +1,8 @@
 use crate::{
-    run::run,
+    eq::EqProfile,
+    run::{run, run_realtime},
     settings::Settings,
-    ui::command::{SetDevice, State},
+    ui::command::{SetDevice, SetRealtime, State},
 };
 use cpal::{
     Device,
@@ -9,7 +10,7 @@ use cpal::{
 };
 
 use crate::{config::Config, ui::command::Command};
-use std::sync::mpsc::Receiver;
+use std::sync::{atomic::Ordering, mpsc::Receiver};
 pub fn executor(
     receiver: Receiver<Command>,
     mut config: Config,
@@ -40,7 +41,13 @@ pub fn executor(
     } else {
         let input_device = input_device.clone();
         let output_device = output_device.clone();
-        start(&state, &settings, &input_device, &output_device);
+        start(
+            &state,
+            &settings,
+            &config.eq_profile,
+            &input_device,
+            &output_device,
+        );
     }
     while let Ok(command) = receiver.recv() {
         println!("New command: {:?}", command);
@@ -50,29 +57,46 @@ pub fn executor(
                     state.running = new_state.running;
                     if state.running {
                         state.running = new_state.running;
-                        start(&state, &settings, &input_device, &output_device);
+                        start(
+                            &state,
+                            &settings,
+                            &config.eq_profile,
+                            &input_device,
+                            &output_device,
+                        );
                     } else {
-                        settings
-                            .instance_id
-                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        settings.instance_id.fetch_add(1, Ordering::Relaxed);
                     }
                 }
                 if state.enabled != new_state.enabled {
                     state.enabled = new_state.enabled;
-                    settings
-                        .enable_eq
-                        .store(state.enabled, std::sync::atomic::Ordering::Relaxed);
+                    settings.enable_eq.store(state.enabled, Ordering::Relaxed);
                 }
             }
             Command::UpdateSettings(new_settings) => {
                 settings = new_settings.clone();
-                config.eq_profile = settings.eq_profile.clone();
                 config.latency = settings.latency;
                 config.save().unwrap();
-                settings
-                    .instance_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                start(&state, &settings, &input_device, &output_device);
+                settings.instance_id.fetch_add(1, Ordering::Relaxed);
+                start(
+                    &state,
+                    &settings,
+                    &config.eq_profile,
+                    &input_device,
+                    &output_device,
+                );
+            }
+            Command::UpdateProfile(new_profile) => {
+                config.eq_profile = new_profile;
+                config.save().unwrap();
+                settings.instance_id.fetch_add(1, Ordering::Relaxed);
+                start(
+                    &state,
+                    &settings,
+                    &config.eq_profile,
+                    &input_device,
+                    &output_device,
+                );
             }
             Command::GetState(oneshot) => {
                 oneshot.send(state);
@@ -97,6 +121,32 @@ pub fn executor(
                 }
                 config.save().unwrap();
             }
+            Command::SetRealtime(set_realtime) => match set_realtime {
+                SetRealtime::Off => {
+                    state.realtime = false;
+                    if state.enabled {
+                        start(
+                            &state,
+                            &settings,
+                            &config.eq_profile,
+                            &input_device,
+                            &output_device,
+                        );
+                    }
+                }
+                SetRealtime::On(receiver) => {
+                    state.realtime = true;
+                    settings.instance_id.fetch_add(1, Ordering::Relaxed);
+                    start_realtime(
+                        &state,
+                        &settings,
+                        &config.eq_profile,
+                        &input_device,
+                        &output_device,
+                        receiver,
+                    );
+                }
+            },
         }
     }
 }
@@ -104,6 +154,7 @@ pub fn executor(
 fn start(
     state: &State,
     settings: &Settings,
+    profile: &EqProfile,
     input_device: &Option<Device>,
     output_device: &Option<Device>,
 ) {
@@ -111,8 +162,30 @@ fn start(
         let input = input_device.clone().unwrap();
         let output = output_device.clone().unwrap();
         let settings = settings.clone();
+        let profile = profile.clone();
         std::thread::spawn(move || {
-            run(input, output, settings)
+            run(input, output, settings, profile)
+                .inspect_err(|e| println!("{:?}", e))
+                .ok();
+        });
+    }
+}
+
+fn start_realtime(
+    state: &State,
+    settings: &Settings,
+    profile: &EqProfile,
+    input_device: &Option<Device>,
+    output_device: &Option<Device>,
+    receiver: Receiver<EqProfile>,
+) {
+    if state.running && input_device.is_some() && output_device.is_some() {
+        let input = input_device.clone().unwrap();
+        let output = output_device.clone().unwrap();
+        let settings = settings.clone();
+        let profile = profile.clone();
+        std::thread::spawn(move || {
+            run_realtime(input, output, settings, profile, receiver)
                 .inspect_err(|e| println!("{:?}", e))
                 .ok();
         });
