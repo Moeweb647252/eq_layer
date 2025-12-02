@@ -116,6 +116,14 @@ impl App {
                     .send(Command::UpdateProfile(self.eq_profile.clone()))
                     .ok();
             }
+            if ui.button("Save").clicked() {
+                self.sender
+                    .send(Command::Save(
+                        self.eq_settings.clone(),
+                        self.eq_profile.clone(),
+                    ))
+                    .ok();
+            }
             if ui.button("Add Band").clicked() {
                 self.eq_profile.filters.push(crate::eq::Filter::default());
             }

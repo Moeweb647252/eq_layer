@@ -79,15 +79,19 @@ impl Executor {
                 Command::UpdateSettings(new_settings) => {
                     self.settings = new_settings.clone();
                     self.config.latency = self.settings.latency;
-                    self.config.save().unwrap();
                     self.settings.instance_id.fetch_add(1, Ordering::Relaxed);
                     self.start_proc();
                 }
                 Command::UpdateProfile(new_profile) => {
                     self.config.eq_profile = new_profile;
-                    self.config.save().unwrap();
                     self.settings.instance_id.fetch_add(1, Ordering::Relaxed);
                     self.start_proc();
+                }
+                Command::Save(settings, profile) => {
+                    self.settings = settings.clone();
+                    self.config.latency = self.settings.latency;
+                    self.config.eq_profile = profile;
+                    self.config.save().unwrap();
                 }
                 Command::GetState(oneshot) => {
                     oneshot.send(self.state);

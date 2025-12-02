@@ -42,6 +42,7 @@ pub enum Command {
     SetState(State),
     UpdateSettings(Settings),
     UpdateProfile(EqProfile),
+    Save(Settings, EqProfile),
     GetState(OneShot<State>),
     SetDevice(SetDevice, String),
     SetRealtime(SetRealtime),
