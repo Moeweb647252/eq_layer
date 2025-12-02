@@ -8,7 +8,7 @@ use ui::App;
 
 use crate::{
     config::{Config, config_dir},
-    executor::executor,
+    executor::Executor,
     ui::command::Info,
     utils::OneShot,
 };
@@ -48,7 +48,7 @@ fn main() {
     let settings_cloned = settings.clone();
     let config_cloned = config.clone();
     std::thread::spawn(move || {
-        executor(receiver, config_cloned, settings_cloned);
+        Executor::new(receiver, config_cloned, settings_cloned).run();
     });
     let oneshot = OneShot::new();
     sender
