@@ -46,4 +46,5 @@ pub enum Command {
     GetState(OneShot<State>),
     SetDevice(SetDevice, String),
     SetRealtime(SetRealtime),
+    Restart,
 }

@@ -16,8 +16,8 @@ fn band_ui(index: usize, band: &mut Filter, ui: &mut Ui, remove: &mut bool) {
             .show_ui(ui, |ui| {
                 ui.selectable_value(
                     &mut band.filter_type,
-                    FilterType::Peak,
-                    FilterType::Peak.to_string(),
+                    FilterType::Peaking,
+                    FilterType::Peaking.to_string(),
                 );
                 ui.selectable_value(
                     &mut band.filter_type,

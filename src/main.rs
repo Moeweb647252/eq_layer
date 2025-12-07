@@ -33,8 +33,10 @@ fn main() {
     std::fs::create_dir_all(&config_dir).unwrap();
     let config_path = config_dir.join("config.toml");
     let config = if config_path.exists()
-        && let Ok(config_contents) = std::fs::read_to_string(&config_path)
-        && let Ok(config) = toml::from_str(config_contents.as_str())
+        && let Ok(config_contents) =
+            std::fs::read_to_string(&config_path).inspect_err(|e| println!("Error: {:?}", e))
+        && let Ok(config) =
+            toml::from_str(config_contents.as_str()).inspect_err(|e| println!("Error: {:?}", e))
     {
         config
     } else {

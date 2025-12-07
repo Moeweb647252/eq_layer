@@ -79,11 +79,11 @@ impl Executor {
                 Command::UpdateSettings(new_settings) => {
                     self.settings = new_settings.clone();
                     self.config.latency = self.settings.latency;
-                    self.settings.instance_id.fetch_add(1, Ordering::Relaxed);
-                    self.start_proc();
                 }
                 Command::UpdateProfile(new_profile) => {
                     self.config.eq_profile = new_profile;
+                }
+                Command::Restart => {
                     self.settings.instance_id.fetch_add(1, Ordering::Relaxed);
                     self.start_proc();
                 }

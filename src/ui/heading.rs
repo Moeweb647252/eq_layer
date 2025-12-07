@@ -115,6 +115,7 @@ impl App {
                 self.sender
                     .send(Command::UpdateProfile(self.eq_profile.clone()))
                     .ok();
+                self.sender.send(Command::Restart).ok();
             }
             if ui.button("Save").clicked() {
                 self.sender

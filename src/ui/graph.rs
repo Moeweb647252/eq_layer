@@ -28,7 +28,7 @@ impl BiquadCoeffs {
         let a = 10.0_f64.powf(band.gain / 40.0);
 
         let (b0, b1, b2, a0, a1, a2) = match band.filter_type {
-            FilterType::Peak => (
+            FilterType::Peaking => (
                 1.0 + alpha * a,
                 -2.0 * cos_w0,
                 1.0 - alpha * a,

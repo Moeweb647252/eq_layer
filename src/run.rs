@@ -12,7 +12,7 @@ use ringbuf::{
 };
 
 use crate::{
-    eq::{EqProfile, Equalizer},
+    eq::{EqProfile, ParametricEq},
     settings::Settings,
 };
 use cpal::{
@@ -28,7 +28,7 @@ pub fn run(
 ) -> Result<()> {
     let stream_config: StreamConfig = input_device.default_input_config()?.into();
 
-    let mut eq = Equalizer::new(profile.clone(), stream_config.sample_rate.0);
+    let mut eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
     let latency_frames = (stream_config.sample_rate.0 as u32 * settings.latency) / 1000;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
@@ -44,17 +44,9 @@ pub fn run(
     let settings_cloned = settings.clone();
     let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
         let eq_enabled = settings_cloned.enable_eq.load(Ordering::Relaxed);
-        for sample in data {
-            *sample = match consumer.try_pop() {
-                Some(s) => {
-                    if eq_enabled {
-                        eq.process_sample(s)
-                    } else {
-                        s
-                    }
-                }
-                None => 0.0,
-            };
+        consumer.pop_slice(data);
+        if eq_enabled {
+            eq.process_buffer(data);
         }
     };
     let input_stream =
@@ -82,7 +74,7 @@ pub fn run_realtime(
 ) -> Result<()> {
     let stream_config: StreamConfig = input_device.default_input_config()?.into();
 
-    let eq = Equalizer::new(profile.clone(), stream_config.sample_rate.0);
+    let eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
     let latency_frames = (stream_config.sample_rate.0 as u32 * settings.latency) / 1000;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
@@ -101,17 +93,9 @@ pub fn run_realtime(
     let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
         let eq_enabled = settings_cloned.enable_eq.load(Ordering::Relaxed);
         let mut eq = eq_cloned.try_lock();
-        for sample in data {
-            *sample = match consumer.try_pop() {
-                Some(s) => {
-                    if eq_enabled && let Ok(eq) = eq.as_mut() {
-                        eq.process_sample(s)
-                    } else {
-                        s
-                    }
-                }
-                None => 0.0,
-            };
+        consumer.pop_slice(data);
+        if eq_enabled && let Ok(eq) = eq.as_mut() {
+            eq.process_buffer(data);
         }
     };
     let input_stream =
@@ -122,7 +106,7 @@ pub fn run_realtime(
     output_stream.play()?;
     while let Ok(profile) = receiver.recv() {
         if let Ok(mut eq) = eq.try_lock() {
-            *eq = Equalizer::new(profile, stream_config.sample_rate.0)
+            *eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
         }
     }
     println!("run_realtime exited");
