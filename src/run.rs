@@ -10,6 +10,7 @@ use ringbuf::{
     HeapRb,
     traits::{Consumer, Producer, Split},
 };
+use tracing::{debug, error};
 
 use crate::{
     eq::{EqProfile, ParametricEq},
@@ -109,10 +110,10 @@ pub fn run_realtime(
             *eq = ParametricEq::from_profile(&profile, stream_config.sample_rate as f32);
         }
     }
-    println!("run_realtime exited");
+    debug!("run_realtime exited");
     Ok(())
 }
 
 fn err_fn(err: cpal::StreamError) {
-    eprintln!("an error occurred on stream: {err}");
+    error!("an error occurred on stream: {err}");
 }

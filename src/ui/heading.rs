@@ -1,6 +1,7 @@
 use std::{ops::DerefMut, str::FromStr, sync::mpsc};
 
 use eframe::egui::{ComboBox, DragValue, Widget};
+use tracing::{debug, error};
 
 use crate::{
     eq::EqProfile,
@@ -41,7 +42,7 @@ impl App {
                             .selectable_value(&mut self.info.input_dev, i.to_owned(), i)
                             .clicked()
                         {
-                            println!("Changed");
+                            debug!("Changed");
                             self.sender
                                 .send(Command::SetDevice(SetDevice::Input, i.clone()))
                                 .ok();
@@ -66,8 +67,8 @@ impl App {
             if ui.button("Load").clicked()
                 && let Some(path) = rfd::FileDialog::new().pick_file()
                 && let Ok(content) = std::fs::read_to_string(path)
-                && let Ok(profile) = EqProfile::from_str(content.as_str())
-                    .inspect_err(|e| println!("Error: {:?}", e))
+                && let Ok(profile) =
+                    EqProfile::from_str(content.as_str()).inspect_err(|e| error!("Error: {:?}", e))
             {
                 *self.eq_profile.deref_mut() = profile;
                 self.sender

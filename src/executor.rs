@@ -8,6 +8,7 @@ use cpal::{
     Device,
     traits::{DeviceTrait, HostTrait},
 };
+use tracing::debug;
 
 use crate::{config::Config, ui::command::Command};
 use std::sync::{atomic::Ordering, mpsc::Receiver};
@@ -57,7 +58,7 @@ impl Executor {
             self.start_proc();
         }
         while let Ok(command) = self.receiver.recv() {
-            println!("New command: {:?}", command);
+            debug!("New command: {:?}", command);
             match command {
                 Command::SetState(new_state) => {
                     if self.state.running != new_state.running {

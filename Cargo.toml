@@ -10,6 +10,8 @@ codegen-units = 1
 panic = "abort"
 
 [dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 anyhow = "1.0"
 biquad = "0.6"
 clap = { version = "4.6", features = ["derive"] }
@@ -20,9 +22,7 @@ eframe = { version = "0.34", default-features = false, features = [
     "glow",
 ] }
 egui_plot = "0.35"
-env_logger = "0.11"
 font-kit = "0.14"
-log = "0.4"
 rfd = "0.17"
 ringbuf = "0.5"
 scc = "3.7"

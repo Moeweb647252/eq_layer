@@ -4,6 +4,7 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use eframe::egui;
 use font_kit::{family_name::FamilyName, properties::Properties, source::SystemSource};
 use settings::Settings;
+use tracing::{error, info, warn};
 use ui::App;
 
 use crate::{
@@ -21,8 +22,15 @@ mod ui;
 mod utils;
 
 fn main() {
-    env_logger::init();
-    println!("{}", config_dir().to_string_lossy());
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .init();
+    info!(
+        "Starting Eq Layer with config directory: {}",
+        config_dir().to_string_lossy()
+    );
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1000.0, 450.0]),
         ..Default::default()
@@ -34,9 +42,9 @@ fn main() {
     let config_path = config_dir.join("config.toml");
     let config = if config_path.exists()
         && let Ok(config_contents) =
-            std::fs::read_to_string(&config_path).inspect_err(|e| println!("Error: {:?}", e))
+            std::fs::read_to_string(&config_path).inspect_err(|e| error!("Error: {:?}", e))
         && let Ok(config) =
-            toml::from_str(config_contents.as_str()).inspect_err(|e| println!("Error: {:?}", e))
+            toml::from_str(config_contents.as_str()).inspect_err(|e| error!("Error: {:?}", e))
     {
         config
     } else {
@@ -102,7 +110,7 @@ fn load_font(ctx: &egui::Context) {
             if let Ok(font) = handle.load() {
                 if let Some(data) = font.copy_font_data() {
                     font_data_bytes = Some(data.to_vec());
-                    println!("Found font: {:?}", family);
+                    warn!("Found font: {:?}", family);
                     break;
                 }
             }
