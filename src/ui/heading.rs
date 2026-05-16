@@ -63,16 +63,16 @@ impl App {
                         }
                     }
                 });
-            if ui.button("Load").clicked() {
-                if let Some(path) = rfd::FileDialog::new().pick_file()
-                    && let Ok(content) = std::fs::read_to_string(path)
-                    && let Ok(profile) = EqProfile::from_str(content.as_str())
-                {
-                    *self.eq_profile.deref_mut() = profile;
-                    self.sender
-                        .send(Command::UpdateSettings(self.eq_settings.clone()))
-                        .ok();
-                }
+            if ui.button("Load").clicked()
+                && let Some(path) = rfd::FileDialog::new().pick_file()
+                && let Ok(content) = std::fs::read_to_string(path)
+                && let Ok(profile) = EqProfile::from_str(content.as_str())
+                    .inspect_err(|e| println!("Error: {:?}", e))
+            {
+                *self.eq_profile.deref_mut() = profile;
+                self.sender
+                    .send(Command::UpdateSettings(self.eq_settings.clone()))
+                    .ok();
             }
             ui.label("Latency:");
             DragValue::new(&mut self.eq_settings.latency)

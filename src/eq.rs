@@ -13,15 +13,16 @@ pub enum FilterType {
     HighPass,  // HP
 }
 
-impl ToString for FilterType {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for FilterType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             Self::Peaking => "Peak",
             Self::HighShelf => "HighShelf",
             Self::LowShelf => "LowShelf",
-            _ => "Not Supported",
-        }
-        .to_string()
+            Self::LowPass => "LowPass",
+            Self::HighPass => "HighPass",
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -119,7 +120,15 @@ impl FromStr for EqProfile {
 }
 
 fn parse_filter_line(line: &str) -> Result<Filter, EqParseError> {
-    let tokens: Vec<&str> = line.split_whitespace().collect();
+    // Split by ':' and take the part after the first ':'
+    let parts: Vec<&str> = line.splitn(2, ':').collect();
+    if parts.len() < 2 {
+        return Err(EqParseError::UnknownFilterType(
+            "Invalid filter line".to_string(),
+        ));
+    }
+    let token_str = parts[1].trim();
+    let tokens: Vec<&str> = token_str.split_whitespace().collect();
 
     let mut filter = Filter::default();
 
@@ -132,26 +141,29 @@ fn parse_filter_line(line: &str) -> Result<Filter, EqParseError> {
             "FC" => {
                 if i + 1 < tokens.len() {
                     filter.frequency = tokens[i + 1].parse()?;
-                    i += 1;
+                    i += 2;
                 }
             }
             "GAIN" => {
                 if i + 1 < tokens.len() {
                     filter.gain = tokens[i + 1].parse()?;
-                    i += 1;
+                    i += 2;
                 }
             }
             "Q" => {
                 if i + 1 < tokens.len() {
                     filter.q_factor = tokens[i + 1].parse()?;
-                    i += 1;
+                    i += 2;
                 }
             }
             "BW" => {
                 if i + 1 < tokens.len() {
                     filter.bandwidth = Some(tokens[i + 1].parse()?);
-                    i += 1;
+                    i += 2;
                 }
+            }
+            "HZ" => {
+                i += 1;
             }
             _ => filter.filter_type = FilterType::from_str(token)?,
         }
