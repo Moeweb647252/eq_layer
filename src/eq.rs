@@ -36,7 +36,7 @@ impl FromStr for FilterType {
             "HSC" | "HIGHSHELF" => Ok(FilterType::HighShelf),
             "LP" | "LOWPASS" => Ok(FilterType::LowPass),
             "HP" | "HIGHPASS" => Ok(FilterType::HighPass),
-            _ => Err(EqParseError::UnknownFilterType(s.to_string())),
+            _ => Err(EqParseError::UnknownFilterType),
         }
     }
 }
@@ -73,7 +73,7 @@ pub struct EqProfile {
 #[derive(Debug)]
 pub enum EqParseError {
     ParseFloatError,
-    UnknownFilterType(String),
+    UnknownFilterType,
 }
 
 impl From<ParseFloatError> for EqParseError {
@@ -123,9 +123,7 @@ fn parse_filter_line(line: &str) -> Result<Filter, EqParseError> {
     // Split by ':' and take the part after the first ':'
     let parts: Vec<&str> = line.splitn(2, ':').collect();
     if parts.len() < 2 {
-        return Err(EqParseError::UnknownFilterType(
-            "Invalid filter line".to_string(),
-        ));
+        return Err(EqParseError::UnknownFilterType);
     }
     let token_str = parts[1].trim();
     let tokens: Vec<&str> = token_str.split_whitespace().collect();
@@ -314,17 +312,6 @@ impl SimdBiquad {
         }
     }
 
-    #[cfg(target_arch = "aarch64")]
-    fn update_coeffs(&mut self, coeffs: BiquadCoeffs) {
-        unsafe {
-            self.b0 = vdupq_n_f32(coeffs.b0);
-            self.b1 = vdupq_n_f32(coeffs.b1);
-            self.b2 = vdupq_n_f32(coeffs.b2);
-            self.a1 = vdupq_n_f32(coeffs.a1);
-            self.a2 = vdupq_n_f32(coeffs.a2);
-        }
-    }
-
     /// Process a single "Quad-Sample" (4 channels at the same time step).
     /// Returns the filtered Quad-Sample.
     /// Direct Form I Difference Equation:
@@ -332,25 +319,19 @@ impl SimdBiquad {
     #[inline(always)]
     #[cfg(target_arch = "aarch64")]
     unsafe fn process_quad(&mut self, input: float32x4_t) -> float32x4_t {
-        // Calculate Feedforward (Zeros)
-        // acc = b0 * x[n]
-        let mut acc = vmulq_f32(self.b0, input);
+        let mut acc = unsafe { vmulq_f32(self.b0, input) };
 
         // acc += b1 * x[n-1]
-        acc = vfmaq_f32(acc, self.b1, self.x1);
+        acc = unsafe { vfmaq_f32(acc, self.b1, self.x1) };
 
         // acc += b2 * x[n-2]
-        acc = vfmaq_f32(acc, self.b2, self.x2);
-
-        // Calculate Feedback (Poles)
-        // Note: We subtract feedback terms.
-        // vfmsq_f32(a, b, c) -> a - b * c (Fused Multiply Subtract)
+        acc = unsafe { vfmaq_f32(acc, self.b2, self.x2) };
 
         // acc -= a1 * y[n-1]
-        acc = vfmsq_f32(acc, self.a1, self.y1);
+        acc = unsafe { vfmsq_f32(acc, self.a1, self.y1) };
 
         // acc -= a2 * y[n-2]
-        acc = vfmsq_f32(acc, self.a2, self.y2);
+        acc = unsafe { vfmsq_f32(acc, self.a2, self.y2) };
 
         // Shift state
         self.x2 = self.x1;
@@ -399,22 +380,6 @@ impl ParametricEq {
         }
     }
 
-    /// Update a specific band index with new parameters
-    pub fn update_band(
-        &mut self,
-        index: usize,
-        filter_type: FilterType,
-        freq: f32,
-        q: f32,
-        gain_db: f32,
-    ) {
-        if let Some(band) = self.bands.get_mut(index) {
-            let coeffs = BiquadCoeffs::calculate(filter_type, freq, q, gain_db, self.sample_rate);
-            #[cfg(target_arch = "aarch64")]
-            band.update_coeffs(coeffs);
-        }
-    }
-
     /// Process a buffer of interleaved audio.
     ///
     /// SAFETY: This function expects `data` to contain interleaved Quad-Channel audio.
@@ -457,7 +422,7 @@ mod tests {
     #[test]
     fn test_eq_config_parser() {
         let config_str = "
-Preamp: 0.0 dB
+Preamp: -1.0 dB
 Filter 1: ON PK Fc 21 Hz Gain 2.3 dB Q 3.500
 Filter 2: ON PK Fc 150 Hz Gain -3.4 dB Q 0.600
 Filter 3: ON PK Fc 690 Hz Gain 2.2 dB Q 3.100
