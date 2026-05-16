@@ -22,10 +22,14 @@ impl BiquadCoeffs {
         let w0 = 2.0 * PI as f64 * band.frequency / fs;
         let cos_w0 = w0.cos();
         let sin_w0 = w0.sin();
-        let alpha = sin_w0 / (2.0 * band.q_factor);
-
-        // 增益转线性幅度 A = 10^(dB/40)
+        let q = band.effective_q();
         let a = 10.0_f64.powf(band.gain / 40.0);
+        let alpha = match band.filter_type {
+            FilterType::LowShelf | FilterType::HighShelf => {
+                sin_w0 / 2.0 * ((a + 1.0 / a) * (1.0 / q - 1.0) + 2.0).sqrt()
+            }
+            _ => sin_w0 / (2.0 * q),
+        };
 
         let (b0, b1, b2, a0, a1, a2) = match band.filter_type {
             FilterType::Peaking => (
