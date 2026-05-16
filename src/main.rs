@@ -60,7 +60,7 @@ fn main() {
     let dev_names = cpal::Host::default()
         .devices()
         .unwrap()
-        .map(|v| v.name())
+        .map(|v| v.description().map(|v| v.name().to_string()))
         .filter_map(|v| v.ok())
         .collect();
     let info = Info {

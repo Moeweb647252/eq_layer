@@ -37,7 +37,7 @@ impl Executor {
         let host = cpal::default_host();
         if let Some(input_device_name) = self.config.input_dev_name.as_ref() {
             for device in host.devices().unwrap() {
-                if device.name().as_ref().unwrap() == input_device_name {
+                if device.description().unwrap().name() == input_device_name {
                     self.input_device = Some(device);
                     break;
                 }
@@ -45,7 +45,7 @@ impl Executor {
         }
         if let Some(output_device_name) = self.config.output_dev_name.as_ref() {
             for device in host.devices().unwrap() {
-                if device.name().as_ref().unwrap() == output_device_name {
+                if device.description().unwrap().name() == output_device_name {
                     self.output_device = Some(device);
                     break;
                 }
@@ -99,7 +99,7 @@ impl Executor {
                 Command::SetDevice(set_device, name) => {
                     let mut dev = None;
                     for device in host.devices().unwrap() {
-                        if device.name().as_ref().unwrap() == name.as_str() {
+                        if device.description().unwrap().name() == name.as_str() {
                             dev = Some(device);
                             break;
                         }

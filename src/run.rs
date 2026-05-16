@@ -28,8 +28,8 @@ pub fn run(
 ) -> Result<()> {
     let stream_config: StreamConfig = input_device.default_input_config()?.into();
 
-    let mut eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
-    let latency_frames = (stream_config.sample_rate.0 as u32 * settings.latency) / 1000;
+    let mut eq = ParametricEq::from_profile(&profile, stream_config.sample_rate as f32);
+    let latency_frames = (stream_config.sample_rate as u32 * settings.latency) / 1000;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
     for _ in 0..latency_frames {
@@ -74,8 +74,8 @@ pub fn run_realtime(
 ) -> Result<()> {
     let stream_config: StreamConfig = input_device.default_input_config()?.into();
 
-    let eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
-    let latency_frames = (stream_config.sample_rate.0 as u32 * settings.latency) / 1000;
+    let eq = ParametricEq::from_profile(&profile, stream_config.sample_rate as f32);
+    let latency_frames = (stream_config.sample_rate as u32 * settings.latency) / 1000;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
     for _ in 0..latency_frames {
@@ -106,7 +106,7 @@ pub fn run_realtime(
     output_stream.play()?;
     while let Ok(profile) = receiver.recv() {
         if let Ok(mut eq) = eq.try_lock() {
-            *eq = ParametricEq::from_profile(&profile, stream_config.sample_rate.0 as f32);
+            *eq = ParametricEq::from_profile(&profile, stream_config.sample_rate as f32);
         }
     }
     println!("run_realtime exited");
