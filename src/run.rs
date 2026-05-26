@@ -72,7 +72,7 @@ pub fn run(
     };
 
     let mut eq = ParametricEq::from_profile(&profile, sample_rate as f32);
-    let latency_frames = (sample_rate as u32 * settings.latency) / 1000;
+    let latency_frames = sample_rate as u32 * settings.latency;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
     for _ in 0..latency_frames {
