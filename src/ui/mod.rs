@@ -4,8 +4,9 @@ use crate::{
     ui::command::{Command, Info, State},
     utils::DerefMutHook,
 };
-use eframe::egui::CentralPanel;
+use eframe::egui::{self, CentralPanel};
 use std::sync::mpsc::SyncSender;
+use tracing::debug;
 
 pub mod command;
 mod equalizer;
@@ -20,6 +21,8 @@ pub struct App {
     sender: SyncSender<Command>,
     state: State,
     info: Info,
+    window_hidden: bool,
+    quitting: bool,
 }
 
 impl App {
@@ -38,13 +41,35 @@ impl App {
             sender,
             state,
             info,
+            window_hidden: false,
+            quitting: false,
         }
     }
 }
 
 impl eframe::App for App {
-    fn update(&mut self, _ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {}
+    fn logic(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+        debug!("logic tick");
+        if self.window_hidden
+            && ctx.has_requested_repaint()
+            && ctx.input(|i| i.viewport().focused == Some(true))
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            self.window_hidden = false;
+        }
+    }
+
     fn ui(&mut self, ui: &mut eframe::egui::Ui, _frame: &mut eframe::Frame) {
+        let close_requested = ui.ctx().input(|i| i.viewport().close_requested());
+
+        if close_requested && !self.quitting {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.window_hidden = true;
+            return;
+        }
         CentralPanel::default().show_inside(ui, |ui| {
             ui.vertical(|ui| {
                 self.heading_ui(ui);

@@ -16,6 +16,8 @@ use crate::{
 mod config;
 mod eq;
 mod executor;
+#[cfg(target_os = "macos")]
+mod macos;
 mod run;
 mod settings;
 mod ui;
@@ -83,6 +85,8 @@ fn main() {
         options,
         Box::new(|ctx| {
             load_font(&ctx.egui_ctx);
+            #[cfg(target_os = "macos")]
+            let _dock_observer = macos::setup_dock_observer(ctx.egui_ctx.clone());
             Ok(Box::new(app))
         }),
     )

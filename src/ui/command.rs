@@ -47,4 +47,5 @@ pub enum Command {
     SetDevice(SetDevice, String),
     SetRealtime(SetRealtime),
     Restart,
+    Shutdown,
 }

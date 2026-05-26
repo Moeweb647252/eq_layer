@@ -130,6 +130,10 @@ impl Executor {
                         self.start_proc_realtime(receiver);
                     }
                 },
+                Command::Shutdown => {
+                    self.settings.instance_id.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
             }
         }
     }

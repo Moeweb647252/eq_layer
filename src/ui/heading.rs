@@ -1,6 +1,6 @@
 use std::{ops::DerefMut, str::FromStr, sync::mpsc};
 
-use eframe::egui::{ComboBox, DragValue, Widget};
+use eframe::egui::{self, ComboBox, DragValue, Widget};
 use tracing::{debug, error};
 
 use crate::{
@@ -125,6 +125,11 @@ impl App {
                         self.eq_profile.clone(),
                     ))
                     .ok();
+            }
+            if ui.button("Quit").clicked() {
+                self.sender.send(Command::Shutdown).ok();
+                self.quitting = true;
+                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
             }
             if ui.button("Add Band").clicked() {
                 self.eq_profile.filters.push(crate::eq::Filter::default());
