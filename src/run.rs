@@ -14,7 +14,7 @@ use ringbuf::{
     HeapRb,
     traits::{Consumer, Producer, Split},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 use crate::{
     eq::{EqProfile, ParametricEq},
@@ -52,32 +52,33 @@ pub fn run(
         })
         .expect("Can not find supported output config");
     let sample_rate = input_config_range
-        .max_sample_rate()
-        .min(output_config_range.max_sample_rate());
-    let input_stream_config = StreamConfig {
-        channels: input_config_range.channels(),
-        sample_rate,
-        buffer_size: match input_config_range.buffer_size() {
-            Range { min, max: _ } => cpal::BufferSize::Fixed(*min),
-            Unknown => cpal::BufferSize::Default,
-        },
+        .min_sample_rate()
+        .max(output_config_range.min_sample_rate());
+    let buffer_size = match (
+        input_config_range.buffer_size(),
+        output_config_range.buffer_size(),
+    ) {
+        (Range { min: a_min, max: _ }, Range { min: b_min, max: _ }) => {
+            cpal::BufferSize::Fixed(*a_min.max(b_min))
+        }
+        (Range { min: _, max: _ }, Unknown) => cpal::BufferSize::Default,
+        (Unknown, Range { min: _, max: _ }) => cpal::BufferSize::Default,
+        (Unknown, Unknown) => cpal::BufferSize::Default,
     };
-    let output_stream_config = StreamConfig {
-        channels: output_config_range.channels(),
+    let channels = input_config_range
+        .channels()
+        .min(output_config_range.channels());
+    let stream_config = StreamConfig {
+        channels,
         sample_rate,
-        buffer_size: match output_config_range.buffer_size() {
-            Range { min, max: _ } => cpal::BufferSize::Fixed(*min),
-            Unknown => cpal::BufferSize::Default,
-        },
+        buffer_size,
     };
+    info!("Selected stream config: {stream_config:?}");
 
     let mut eq = ParametricEq::from_profile(&profile, sample_rate as f32);
-    let latency_frames = sample_rate as u32 * settings.latency;
-    let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
+    let latency_frames = (sample_rate as u32 * settings.latency) / 1000;
+    let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * channels as usize * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
-    for _ in 0..latency_frames {
-        producer.try_push(0.0).unwrap()
-    }
 
     let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
         producer.push_slice(data);
@@ -93,9 +94,9 @@ pub fn run(
         }
     };
     let input_stream =
-        input_device.build_input_stream(&input_stream_config, input_data_fn, err_fn, None)?;
+        input_device.build_input_stream(&stream_config, input_data_fn, err_fn, None)?;
     let output_stream =
-        output_device.build_output_stream(&output_stream_config, output_data_fn, err_fn, None)?;
+        output_device.build_output_stream(&stream_config, output_data_fn, err_fn, None)?;
     input_stream.play()?;
     output_stream.play()?;
     let instance_id = settings
