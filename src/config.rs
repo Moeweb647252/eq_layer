@@ -9,7 +9,6 @@ use crate::eq::EqProfile;
 pub struct Config {
     pub input_dev_name: Option<String>,
     pub output_dev_name: Option<String>,
-    pub latency: u32,
     pub eq_profile: EqProfile,
 }
 

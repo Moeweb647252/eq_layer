@@ -8,5 +8,4 @@ use std::sync::{
 pub struct Settings {
     pub enable_eq: Arc<AtomicBool>,
     pub instance_id: Arc<AtomicUsize>,
-    pub latency: u32,
 }

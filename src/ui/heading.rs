@@ -75,11 +75,6 @@ impl App {
                     .send(Command::UpdateSettings(self.eq_settings.clone()))
                     .ok();
             }
-            ui.label("Latency:");
-            DragValue::new(&mut self.eq_settings.latency)
-                .speed(1)
-                .range(1.0..=1000.0)
-                .ui(ui);
             ui.label("Preamp:");
             DragValue::new(&mut self.eq_profile.preamp_db)
                 .speed(0.1)

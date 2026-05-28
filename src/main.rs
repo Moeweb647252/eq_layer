@@ -55,7 +55,6 @@ fn main() {
     let settings = Settings {
         enable_eq: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
         instance_id: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
-        latency: 1,
     };
     let settings_cloned = settings.clone();
     let config_cloned = config.clone();

@@ -79,7 +79,6 @@ impl Executor {
                 }
                 Command::UpdateSettings(new_settings) => {
                     self.settings = new_settings.clone();
-                    self.config.latency = self.settings.latency;
                 }
                 Command::UpdateProfile(new_profile) => {
                     self.config.eq_profile = new_profile;
@@ -90,7 +89,6 @@ impl Executor {
                 }
                 Command::Save(settings, profile) => {
                     self.settings = settings.clone();
-                    self.config.latency = self.settings.latency;
                     self.config.eq_profile = profile;
                     self.config.save().unwrap();
                 }

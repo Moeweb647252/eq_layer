@@ -76,8 +76,14 @@ pub fn run(
     info!("Selected stream config: {stream_config:?}");
 
     let mut eq = ParametricEq::from_profile(&profile, sample_rate as f32);
-    let latency_frames = (sample_rate as u32 * settings.latency) / 1000;
-    let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * channels as usize * 2); // stereo
+    let ring_buffer = HeapRb::<f32>::new(
+        if let cpal::BufferSize::Fixed(size) = stream_config.buffer_size {
+            size as usize
+        } else {
+            sample_rate as usize / 1000
+        } * channels as usize
+            * 2,
+    ); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
 
     let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
@@ -103,7 +109,7 @@ pub fn run(
         .instance_id
         .load(std::sync::atomic::Ordering::Relaxed);
     loop {
-        sleep(Duration::from_millis(settings.latency as u64));
+        sleep(Duration::from_millis(100 as u64));
         if instance_id
             != settings
                 .instance_id
@@ -125,7 +131,7 @@ pub fn run_realtime(
     let stream_config: StreamConfig = input_device.default_input_config()?.into();
 
     let eq = ParametricEq::from_profile(&profile, stream_config.sample_rate as f32);
-    let latency_frames = (stream_config.sample_rate as u32 * settings.latency) / 1000;
+    let latency_frames = stream_config.sample_rate as u32 / 1000;
     let ring_buffer = HeapRb::<f32>::new(latency_frames as usize * 2 * 2); // stereo
     let (mut producer, mut consumer) = ring_buffer.split();
     for _ in 0..latency_frames {
